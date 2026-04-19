@@ -310,6 +310,59 @@ app.get("/bands/:id", async (req, res) => {
   }
 });
 
+app.put("/bands/:id", async (req, res) => {
+  try {
+    const bandId = req.params.id;
+    const {
+      band_name,
+      hometown_city,
+      hometown_state,
+      active_start_year,
+      active_end_year,
+      status,
+      notes
+    } = req.body;
+
+    const result = await pool.query(
+      `
+      UPDATE bands
+      SET
+        band_name = $1,
+        hometown_city = $2,
+        hometown_state = $3,
+        active_start_year = $4,
+        active_end_year = $5,
+        status = $6,
+        notes = $7
+      WHERE id = $8
+      RETURNING *;
+      `,
+      [
+        band_name,
+        hometown_city,
+        hometown_state,
+        active_start_year,
+        active_end_year,
+        status,
+        notes,
+        bandId
+      ]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).send("Band not found");
+    }
+
+    res.json({
+      message: "Band updated",
+      band: result.rows[0]
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("Error updating band");
+  }
+});
+
 const PORT = process.env.PORT;
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`Server running on port ${PORT}`);
