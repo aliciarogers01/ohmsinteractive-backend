@@ -363,6 +363,34 @@ app.put("/bands/:id", async (req, res) => {
   }
 });
 
+app.delete("/bands/:id", async (req, res) => {
+  try {
+    const bandId = req.params.id;
+
+    await pool.query(
+      `DELETE FROM band_members WHERE band_id = $1`,
+      [bandId]
+    );
+
+    const result = await pool.query(
+      `DELETE FROM bands WHERE id = $1 RETURNING *`,
+      [bandId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).send("Band not found");
+    }
+
+    res.json({
+      message: "Band deleted",
+      band: result.rows[0]
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("Error deleting band");
+  }
+});
+
 const PORT = process.env.PORT;
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`Server running on port ${PORT}`);
