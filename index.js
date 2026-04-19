@@ -143,6 +143,45 @@ app.get("/artists", async (req, res) => {
   }
 });
 
+app.get("/artists/:id", async (req, res) => {
+  try {
+    const artistId = req.params.id;
+
+    const artistResult = await pool.query(
+      `SELECT * FROM artists WHERE id = $1`,
+      [artistId]
+    );
+
+    if (artistResult.rows.length === 0) {
+      return res.status(404).send("Artist not found");
+    }
+
+    const bandsResult = await pool.query(
+      `
+      SELECT
+        bands.id,
+        bands.band_name,
+        band_members.instrument,
+        band_members.start_year,
+        band_members.end_year
+      FROM band_members
+      JOIN bands ON band_members.band_id = bands.id
+      WHERE band_members.artist_id = $1
+      ORDER BY bands.id DESC
+      `,
+      [artistId]
+    );
+
+    res.json({
+      artist: artistResult.rows[0],
+      bands: bandsResult.rows
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("Error fetching artist details");
+  }
+});
+
 const PORT = process.env.PORT;
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`Server running on port ${PORT}`);
