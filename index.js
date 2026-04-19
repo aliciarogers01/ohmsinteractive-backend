@@ -391,6 +391,72 @@ app.delete("/bands/:id", async (req, res) => {
   }
 });
 
+app.get('/artists/:id', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const result = await pool.query(
+      'SELECT * FROM artists WHERE id = $1',
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Artist not found' });
+    }
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error('Error fetching artist:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.put('/artists/:id', async (req, res) => {
+  const { id } = req.params;
+  const { name, hometown, notes } = req.body;
+
+  try {
+    const result = await pool.query(
+      `UPDATE artists
+       SET name = $1,
+           hometown = $2,
+           notes = $3
+       WHERE id = $4
+       RETURNING *`,
+      [name, hometown, notes, id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Artist not found' });
+    }
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error('Error updating artist:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.delete('/artists/:id', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const result = await pool.query(
+      'DELETE FROM artists WHERE id = $1 RETURNING *',
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Artist not found' });
+    }
+
+    res.json({ message: 'Artist deleted successfully' });
+  } catch (err) {
+    console.error('Error deleting artist:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 const PORT = process.env.PORT;
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`Server running on port ${PORT}`);
