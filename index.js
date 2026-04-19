@@ -57,31 +57,42 @@ app.post("/bands", async (req, res) => {
       members
     } = req.body;
 
-    const bandResult = await pool.query(
-      `
-      INSERT INTO bands 
-      (band_name, hometown_city, hometown_state, active_start_year, active_end_year, status, notes)
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
-      RETURNING *;
-      `,
-      [
-        band_name,
-        hometown_city,
-        hometown_state,
-        active_start_year,
-        active_end_year,
-        status,
-        notes
-      ]
+    let bandResult = await pool.query(
+      `SELECT * FROM bands WHERE LOWER(band_name) = LOWER($1) LIMIT 1`,
+      [band_name]
     );
 
-    const band = bandResult.rows[0];
+    let band;
+
+    if (bandResult.rows.length === 0) {
+      const newBandResult = await pool.query(
+        `
+        INSERT INTO bands 
+        (band_name, hometown_city, hometown_state, active_start_year, active_end_year, status, notes)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        RETURNING *;
+        `,
+        [
+          band_name,
+          hometown_city,
+          hometown_state,
+          active_start_year,
+          active_end_year,
+          status,
+          notes
+        ]
+      );
+
+      band = newBandResult.rows[0];
+    } else {
+      band = bandResult.rows[0];
+    }
 
     for (const member of members || []) {
       const { artist_name, instrument, year_start, year_end } = member;
 
       let artistResult = await pool.query(
-        `SELECT * FROM artists WHERE name = $1`,
+        `SELECT * FROM artists WHERE LOWER(name) = LOWER($1) LIMIT 1`,
         [artist_name]
       );
 
@@ -97,20 +108,31 @@ app.post("/bands", async (req, res) => {
         artist = artistResult.rows[0];
       }
 
-      await pool.query(
+      const existingLink = await pool.query(
         `
-        INSERT INTO band_members
-        (band_id, artist_id, instrument, start_year, end_year)
-        VALUES ($1, $2, $3, $4, $5)
+        SELECT * FROM band_members
+        WHERE band_id = $1 AND artist_id = $2
+        LIMIT 1
         `,
-        [
-          band.id,
-          artist.id,
-          instrument,
-          year_start,
-          year_end
-        ]
+        [band.id, artist.id]
       );
+
+      if (existingLink.rows.length === 0) {
+        await pool.query(
+          `
+          INSERT INTO band_members
+          (band_id, artist_id, instrument, start_year, end_year)
+          VALUES ($1, $2, $3, $4, $5)
+          `,
+          [
+            band.id,
+            artist.id,
+            instrument,
+            year_start,
+            year_end
+          ]
+        );
+      }
     }
 
     res.json({
