@@ -70,6 +70,16 @@ app.post("/bands", async (req, res) => {
   }
 });
 
+app.get("/bands", async (req, res) => {
+  try {
+    const result = await pool.query("SELECT * FROM bands ORDER BY id DESC");
+    res.json(result.rows);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("Error fetching bands");
+  }
+});
+
 const PORT = process.env.PORT;
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`Server running on port ${PORT}`);
