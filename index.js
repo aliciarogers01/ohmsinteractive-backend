@@ -204,6 +204,92 @@ app.get("/artists/:id", async (req, res) => {
   }
 });
 
+app.post("/artists", async (req, res) => {
+  try {
+    const {
+      artist_name,
+      hometown_city,
+      hometown_state,
+      active_start_year,
+      active_end_year,
+      status,
+      notes,
+      bands
+    } = req.body;
+
+    let artistResult = await pool.query(
+      `SELECT * FROM artists WHERE LOWER(name) = LOWER($1) LIMIT 1`,
+      [artist_name]
+    );
+
+    let artist;
+
+    if (artistResult.rows.length === 0) {
+      const newArtist = await pool.query(
+        `INSERT INTO artists (name) VALUES ($1) RETURNING *`,
+        [artist_name]
+      );
+      artist = newArtist.rows[0];
+    } else {
+      artist = artistResult.rows[0];
+    }
+
+    for (const bandEntry of bands || []) {
+      const { band_name, hometown_city, hometown_state } = bandEntry;
+
+      let bandResult = await pool.query(
+        `SELECT * FROM bands WHERE LOWER(band_name) = LOWER($1) LIMIT 1`,
+        [band_name]
+      );
+
+      let band;
+
+      if (bandResult.rows.length === 0) {
+        const newBand = await pool.query(
+          `
+          INSERT INTO bands
+          (band_name, hometown_city, hometown_state, active_start_year, active_end_year, status, notes)
+          VALUES ($1, $2, $3, '', '', '', '')
+          RETURNING *;
+          `,
+          [band_name, hometown_city, hometown_state]
+        );
+        band = newBand.rows[0];
+      } else {
+        band = bandResult.rows[0];
+      }
+
+      const existingLink = await pool.query(
+        `
+        SELECT * FROM band_members
+        WHERE band_id = $1 AND artist_id = $2
+        LIMIT 1
+        `,
+        [band.id, artist.id]
+      );
+
+      if (existingLink.rows.length === 0) {
+        await pool.query(
+          `
+          INSERT INTO band_members
+          (band_id, artist_id, instrument, start_year, end_year)
+          VALUES ($1, $2, '', '', '')
+          `,
+          [band.id, artist.id]
+        );
+      }
+    }
+
+    res.json({
+      message: "Artist + bands saved",
+      artist: artist
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("Error saving artist");
+  }
+});
+
 const PORT = process.env.PORT;
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`Server running on port ${PORT}`);
