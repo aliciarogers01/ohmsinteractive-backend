@@ -391,13 +391,6 @@ app.delete("/bands/:id", async (req, res) => {
   }
 });
 
-if (request.result == UnityWebRequest.Result.Success)
-{
-    Debug.Log("Band updated");
-
-    FindObjectOfType<PanelSwitcher>().ShowViewBandsPanel();
-}
-
 const PORT = process.env.PORT;
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`Server running on port ${PORT}`);
