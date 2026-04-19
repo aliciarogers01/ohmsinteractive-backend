@@ -30,13 +30,44 @@ app.get("/init", async (req, res) => {
   }
 });
 
-app.post("/bands", (req, res) => {
-  console.log("Received band data:", req.body);
+app.post("/bands", async (req, res) => {
+  try {
+    const {
+      band_name,
+      hometown_city,
+      hometown_state,
+      active_start_year,
+      active_end_year,
+      status,
+      notes
+    } = req.body;
 
-  res.json({
-    message: "Band data received successfully",
-    data: req.body
-  });
+    const result = await pool.query(
+      `
+      INSERT INTO bands 
+      (band_name, hometown_city, hometown_state, active_start_year, active_end_year, status, notes)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      RETURNING *;
+      `,
+      [
+        band_name,
+        hometown_city,
+        hometown_state,
+        active_start_year,
+        active_end_year,
+        status,
+        notes
+      ]
+    );
+
+    res.json({
+      message: "Band saved",
+      band: result.rows[0]
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("Error saving band");
+  }
 });
 
 const PORT = process.env.PORT;
