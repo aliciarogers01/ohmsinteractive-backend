@@ -311,8 +311,9 @@ app.get("/artists/:id", async (req, res) => {
     );
 
     res.json({
-      artist: artistResult.rows[0],
-      bands: bandsResult.rows
+  ...artistResult.rows[0],
+  bands: bandsResult.rows
+});
     });
   } catch (error) {
     console.error(error);
