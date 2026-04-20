@@ -206,25 +206,26 @@ app.get("/bands/:id", async (req, res) => {
   }
 });
 
-app.put("/bands/:id", async (req, res) => {
+app.put("/artists/:id", async (req, res) => {
   try {
-    const bandId = req.params.id;
+    const artistId = req.params.id;
+
     const {
-      band_name,
+      name,
       hometown_city,
       hometown_state,
       active_start_year,
       active_end_year,
       status,
       notes,
-      members
+      bands
     } = req.body;
 
-    const bandUpdateResult = await pool.query(
+    const updateResult = await pool.query(
       `
-      UPDATE bands
+      UPDATE artists
       SET
-        band_name = $1,
+        name = $1,
         hometown_city = $2,
         hometown_state = $3,
         active_start_year = $4,
@@ -232,56 +233,56 @@ app.put("/bands/:id", async (req, res) => {
         status = $6,
         notes = $7
       WHERE id = $8
-      RETURNING *;
+      RETURNING *
       `,
       [
-        band_name,
+        name,
         hometown_city || "",
         hometown_state || "",
         active_start_year || "",
         active_end_year || "",
         status || "",
         notes || "",
-        bandId
+        artistId
       ]
     );
 
-    if (bandUpdateResult.rows.length === 0) {
-      return res.status(404).send("Band not found");
+    if (updateResult.rows.length === 0) {
+      return res.status(404).json({ error: "Artist not found" });
     }
 
-    // Clear existing member links for this band
+    // 🔥 CLEAR EXISTING BAND LINKS
     await pool.query(
-      `DELETE FROM band_members WHERE band_id = $1`,
-      [bandId]
+      `DELETE FROM band_members WHERE artist_id = $1`,
+      [artistId]
     );
 
-    // Re-add current members from the request
-    for (const member of members || []) {
-      const artistName = (member.artist_name || "").trim();
+    // 🔥 RE-ADD BANDS
+    for (const bandEntry of bands || []) {
+      const bandName = (bandEntry.band_name || "").trim();
 
-      if (!artistName) continue;
+      if (!bandName) continue;
 
-      let artistResult = await pool.query(
-        `SELECT * FROM artists WHERE LOWER(name) = LOWER($1) LIMIT 1`,
-        [artistName]
+      let bandResult = await pool.query(
+        `SELECT * FROM bands WHERE LOWER(band_name) = LOWER($1) LIMIT 1`,
+        [bandName]
       );
 
-      let artist;
+      let band;
 
-      if (artistResult.rows.length === 0) {
-        const newArtist = await pool.query(
+      if (bandResult.rows.length === 0) {
+        const newBand = await pool.query(
           `
-          INSERT INTO artists
-          (name, hometown_city, hometown_state, active_start_year, active_end_year, status, notes)
+          INSERT INTO bands
+          (band_name, hometown_city, hometown_state, active_start_year, active_end_year, status, notes)
           VALUES ($1, '', '', '', '', '', '')
           RETURNING *
           `,
-          [artistName]
+          [bandName]
         );
-        artist = newArtist.rows[0];
+        band = newBand.rows[0];
       } else {
-        artist = artistResult.rows[0];
+        band = bandResult.rows[0];
       }
 
       await pool.query(
@@ -290,30 +291,32 @@ app.put("/bands/:id", async (req, res) => {
         (band_id, artist_id, instrument, start_year, end_year)
         VALUES ($1, $2, '', '', '')
         `,
-        [bandId, artist.id]
+        [band.id, artistId]
       );
     }
 
-    const membersResult = await pool.query(
+    // 🔥 RETURN UPDATED BANDS
+    const bandsResult = await pool.query(
       `
       SELECT
-        artists.id AS artist_id,
-        artists.name AS artist_name
+        bands.id,
+        bands.band_name
       FROM band_members
-      JOIN artists ON band_members.artist_id = artists.id
-      WHERE band_members.band_id = $1
-      ORDER BY artists.name ASC
+      JOIN bands ON band_members.band_id = bands.id
+      WHERE band_members.artist_id = $1
+      ORDER BY bands.band_name ASC
       `,
-      [bandId]
+      [artistId]
     );
 
     res.json({
-      ...bandUpdateResult.rows[0],
-      members: membersResult.rows
+      ...updateResult.rows[0],
+      bands: bandsResult.rows
     });
-  } catch (error) {
-    console.error(error);
-    res.status(500).send("Error updating band");
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Error updating artist" });
   }
 });
 
