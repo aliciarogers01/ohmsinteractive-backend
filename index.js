@@ -183,7 +183,23 @@ app.get("/bands/:id", async (req, res) => {
       return res.status(404).send("Band not found");
     }
 
-    res.json(bandResult.rows[0]);
+    const membersResult = await pool.query(
+      `
+      SELECT
+        artists.id AS artist_id,
+        artists.name AS artist_name
+      FROM band_members
+      JOIN artists ON band_members.artist_id = artists.id
+      WHERE band_members.band_id = $1
+      ORDER BY artists.name ASC
+      `,
+      [bandId]
+    );
+
+    res.json({
+      ...bandResult.rows[0],
+      members: membersResult.rows
+    });
   } catch (error) {
     console.error(error);
     res.status(500).send("Error fetching band");
