@@ -314,7 +314,6 @@ app.get("/artists/:id", async (req, res) => {
   ...artistResult.rows[0],
   bands: bandsResult.rows
 });
-    });
   } catch (error) {
     console.error(error);
     res.status(500).send("Error fetching artist details");
