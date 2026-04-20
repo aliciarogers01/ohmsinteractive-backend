@@ -216,10 +216,11 @@ app.put("/bands/:id", async (req, res) => {
       active_start_year,
       active_end_year,
       status,
-      notes
+      notes,
+      members
     } = req.body;
 
-    const result = await pool.query(
+    const bandUpdateResult = await pool.query(
       `
       UPDATE bands
       SET
@@ -235,23 +236,80 @@ app.put("/bands/:id", async (req, res) => {
       `,
       [
         band_name,
-        hometown_city,
-        hometown_state,
-        active_start_year,
-        active_end_year,
-        status,
-        notes,
+        hometown_city || "",
+        hometown_state || "",
+        active_start_year || "",
+        active_end_year || "",
+        status || "",
+        notes || "",
         bandId
       ]
     );
 
-    if (result.rows.length === 0) {
+    if (bandUpdateResult.rows.length === 0) {
       return res.status(404).send("Band not found");
     }
 
+    // Clear existing member links for this band
+    await pool.query(
+      `DELETE FROM band_members WHERE band_id = $1`,
+      [bandId]
+    );
+
+    // Re-add current members from the request
+    for (const member of members || []) {
+      const artistName = (member.artist_name || "").trim();
+
+      if (!artistName) continue;
+
+      let artistResult = await pool.query(
+        `SELECT * FROM artists WHERE LOWER(name) = LOWER($1) LIMIT 1`,
+        [artistName]
+      );
+
+      let artist;
+
+      if (artistResult.rows.length === 0) {
+        const newArtist = await pool.query(
+          `
+          INSERT INTO artists
+          (name, hometown_city, hometown_state, active_start_year, active_end_year, status, notes)
+          VALUES ($1, '', '', '', '', '', '')
+          RETURNING *
+          `,
+          [artistName]
+        );
+        artist = newArtist.rows[0];
+      } else {
+        artist = artistResult.rows[0];
+      }
+
+      await pool.query(
+        `
+        INSERT INTO band_members
+        (band_id, artist_id, instrument, start_year, end_year)
+        VALUES ($1, $2, '', '', '')
+        `,
+        [bandId, artist.id]
+      );
+    }
+
+    const membersResult = await pool.query(
+      `
+      SELECT
+        artists.id AS artist_id,
+        artists.name AS artist_name
+      FROM band_members
+      JOIN artists ON band_members.artist_id = artists.id
+      WHERE band_members.band_id = $1
+      ORDER BY artists.name ASC
+      `,
+      [bandId]
+    );
+
     res.json({
-      message: "Band updated",
-      band: result.rows[0]
+      ...bandUpdateResult.rows[0],
+      members: membersResult.rows
     });
   } catch (error) {
     console.error(error);
