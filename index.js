@@ -171,7 +171,9 @@ app.post("/bands", async (req, res) => {
 
 app.get("/bands", async (req, res) => {
   try {
-    const result = await pool.query("SELECT * FROM bands ORDER BY id DESC");
+    const result = await pool.query(
+      "SELECT * FROM bands ORDER BY LOWER(band_name) ASC"
+    );
     res.json(result.rows);
   } catch (error) {
     console.error(error);
@@ -203,7 +205,7 @@ app.get("/bands/:id", async (req, res) => {
       FROM band_members
       JOIN artists ON band_members.artist_id = artists.id
       WHERE band_members.band_id = $1
-      ORDER BY artists.name ASC
+      ORDER BY LOWER(artists.name) ASC
       `,
       [bandId]
     );
@@ -321,7 +323,7 @@ app.put("/bands/:id", async (req, res) => {
       FROM band_members
       JOIN artists ON band_members.artist_id = artists.id
       WHERE band_members.band_id = $1
-      ORDER BY artists.name ASC
+      ORDER BY LOWER(artists.name) ASC
       `,
       [bandId]
     );
@@ -366,7 +368,9 @@ app.delete("/bands/:id", async (req, res) => {
 
 app.get("/artists", async (req, res) => {
   try {
-    const result = await pool.query("SELECT * FROM artists ORDER BY id DESC");
+    const result = await pool.query(
+      "SELECT * FROM artists ORDER BY LOWER(name) ASC"
+    );
     res.json(result.rows);
   } catch (error) {
     console.error(error);
@@ -398,7 +402,7 @@ app.get("/artists/:id", async (req, res) => {
       FROM band_members
       JOIN bands ON band_members.band_id = bands.id
       WHERE band_members.artist_id = $1
-      ORDER BY bands.id DESC
+      ORDER BY LOWER(bands.band_name) ASC
       `,
       [artistId]
     );
@@ -645,7 +649,7 @@ app.put("/artists/:id", async (req, res) => {
       FROM band_members
       JOIN bands ON band_members.band_id = bands.id
       WHERE band_members.artist_id = $1
-      ORDER BY bands.band_name ASC
+      ORDER BY LOWER(bands.band_name) ASC
       `,
       [artistId]
     );
