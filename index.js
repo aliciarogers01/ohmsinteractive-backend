@@ -19,7 +19,8 @@ app.get("/init", async (req, res) => {
         active_start_year TEXT,
         active_end_year TEXT,
         status TEXT,
-        notes TEXT
+        notes TEXT,
+        image_url TEXT DEFAULT ''
       );
 
       CREATE TABLE IF NOT EXISTS artists (
@@ -53,6 +54,17 @@ app.get("/init", async (req, res) => {
       ADD COLUMN IF NOT EXISTS notes TEXT;
     `);
 
+    await pool.query(`
+      ALTER TABLE bands
+      ADD COLUMN IF NOT EXISTS hometown_city TEXT,
+      ADD COLUMN IF NOT EXISTS hometown_state TEXT,
+      ADD COLUMN IF NOT EXISTS active_start_year TEXT,
+      ADD COLUMN IF NOT EXISTS active_end_year TEXT,
+      ADD COLUMN IF NOT EXISTS status TEXT,
+      ADD COLUMN IF NOT EXISTS notes TEXT,
+      ADD COLUMN IF NOT EXISTS image_url TEXT DEFAULT '';
+    `);
+
     res.send("Tables created/updated");
   } catch (error) {
     console.error(error);
@@ -70,6 +82,7 @@ app.post("/bands", async (req, res) => {
       active_end_year,
       status,
       notes,
+      image_url,
       members
     } = req.body;
 
@@ -84,8 +97,8 @@ app.post("/bands", async (req, res) => {
       const newBandResult = await pool.query(
         `
         INSERT INTO bands 
-        (band_name, hometown_city, hometown_state, active_start_year, active_end_year, status, notes)
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        (band_name, hometown_city, hometown_state, active_start_year, active_end_year, status, notes, image_url)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
         RETURNING *;
         `,
         [
@@ -95,13 +108,40 @@ app.post("/bands", async (req, res) => {
           active_start_year || "",
           active_end_year || "",
           status || "",
-          notes || ""
+          notes || "",
+          image_url || ""
         ]
       );
 
       band = newBandResult.rows[0];
     } else {
-      band = bandResult.rows[0];
+      const updatedBandResult = await pool.query(
+        `
+        UPDATE bands
+        SET
+          hometown_city = $1,
+          hometown_state = $2,
+          active_start_year = $3,
+          active_end_year = $4,
+          status = $5,
+          notes = $6,
+          image_url = $7
+        WHERE id = $8
+        RETURNING *;
+        `,
+        [
+          hometown_city || "",
+          hometown_state || "",
+          active_start_year || "",
+          active_end_year || "",
+          status || "",
+          notes || "",
+          image_url || "",
+          bandResult.rows[0].id
+        ]
+      );
+
+      band = updatedBandResult.rows[0];
     }
 
     for (const member of members || []) {
@@ -232,6 +272,7 @@ app.put("/bands/:id", async (req, res) => {
       active_end_year,
       status,
       notes,
+      image_url,
       members
     } = req.body;
 
@@ -245,8 +286,9 @@ app.put("/bands/:id", async (req, res) => {
         active_start_year = $4,
         active_end_year = $5,
         status = $6,
-        notes = $7
-      WHERE id = $8
+        notes = $7,
+        image_url = $8
+      WHERE id = $9
       RETURNING *
       `,
       [
@@ -257,6 +299,7 @@ app.put("/bands/:id", async (req, res) => {
         active_end_year || "",
         status || "",
         notes || "",
+        image_url || "",
         bandId
       ]
     );
@@ -507,8 +550,8 @@ app.post("/artists", async (req, res) => {
         const newBand = await pool.query(
           `
           INSERT INTO bands
-          (band_name, hometown_city, hometown_state, active_start_year, active_end_year, status, notes)
-          VALUES ($1, $2, $3, '', '', '', '')
+          (band_name, hometown_city, hometown_state, active_start_year, active_end_year, status, notes, image_url)
+          VALUES ($1, $2, $3, '', '', '', '', '')
           RETURNING *;
           `,
           [cleanBandName, band_city || "", band_state || ""]
@@ -620,8 +663,8 @@ app.put("/artists/:id", async (req, res) => {
         const newBand = await pool.query(
           `
           INSERT INTO bands
-          (band_name, hometown_city, hometown_state, active_start_year, active_end_year, status, notes)
-          VALUES ($1, '', '', '', '', '', '')
+          (band_name, hometown_city, hometown_state, active_start_year, active_end_year, status, notes, image_url)
+          VALUES ($1, '', '', '', '', '', '', '')
           RETURNING *
           `,
           [bandName]
