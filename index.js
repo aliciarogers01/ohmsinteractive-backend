@@ -23,16 +23,17 @@ app.get("/init", async (req, res) => {
         image_url TEXT DEFAULT ''
       );
 
-      CREATE TABLE IF NOT EXISTS artists (
-        id SERIAL PRIMARY KEY,
-        name TEXT UNIQUE,
-        hometown_city TEXT,
-        hometown_state TEXT,
-        active_start_year TEXT,
-        active_end_year TEXT,
-        status TEXT,
-        notes TEXT
-      );
+CREATE TABLE IF NOT EXISTS artists (
+  id SERIAL PRIMARY KEY,
+  name TEXT UNIQUE,
+  hometown_city TEXT,
+  hometown_state TEXT,
+  active_start_year TEXT,
+  active_end_year TEXT,
+  status TEXT,
+  notes TEXT,
+  image_url TEXT DEFAULT ''
+);
 
       CREATE TABLE IF NOT EXISTS band_members (
         id SERIAL PRIMARY KEY,
@@ -45,14 +46,14 @@ app.get("/init", async (req, res) => {
     `);
 
     await pool.query(`
-      ALTER TABLE artists
-      ADD COLUMN IF NOT EXISTS hometown_city TEXT,
-      ADD COLUMN IF NOT EXISTS hometown_state TEXT,
-      ADD COLUMN IF NOT EXISTS active_start_year TEXT,
-      ADD COLUMN IF NOT EXISTS active_end_year TEXT,
-      ADD COLUMN IF NOT EXISTS status TEXT,
-      ADD COLUMN IF NOT EXISTS notes TEXT;
-    `);
+ALTER TABLE artists
+ADD COLUMN IF NOT EXISTS hometown_city TEXT,
+ADD COLUMN IF NOT EXISTS hometown_state TEXT,
+ADD COLUMN IF NOT EXISTS active_start_year TEXT,
+ADD COLUMN IF NOT EXISTS active_end_year TEXT,
+ADD COLUMN IF NOT EXISTS status TEXT,
+ADD COLUMN IF NOT EXISTS notes TEXT,
+ADD COLUMN IF NOT EXISTS image_url TEXT DEFAULT '';
 
     await pool.query(`
       ALTER TABLE bands
@@ -462,16 +463,17 @@ app.get("/artists/:id", async (req, res) => {
 
 app.post("/artists", async (req, res) => {
   try {
-    const {
-      artist_name,
-      hometown_city,
-      hometown_state,
-      active_start_year,
-      active_end_year,
-      status,
-      notes,
-      bands
-    } = req.body;
+const {
+  artist_name,
+  image_url,
+  hometown_city,
+  hometown_state,
+  active_start_year,
+  active_end_year,
+  status,
+  notes,
+  bands
+} = req.body;
 
     let artistResult = await pool.query(
       `SELECT * FROM artists WHERE LOWER(name) = LOWER($1) LIMIT 1`,
@@ -483,45 +485,48 @@ app.post("/artists", async (req, res) => {
     if (artistResult.rows.length === 0) {
       const newArtist = await pool.query(
         `
-        INSERT INTO artists
-        (name, hometown_city, hometown_state, active_start_year, active_end_year, status, notes)
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
-        RETURNING *
+INSERT INTO artists
+(name, hometown_city, hometown_state, active_start_year, active_end_year, status, notes, image_url)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING *
         `,
-        [
-          artist_name,
-          hometown_city || "",
-          hometown_state || "",
-          active_start_year || "",
-          active_end_year || "",
-          status || "",
-          notes || ""
-        ]
+[
+  artist_name,
+  hometown_city || "",
+  hometown_state || "",
+  active_start_year || "",
+  active_end_year || "",
+  status || "",
+  notes || "",
+  image_url || ""
+]
       );
       artist = newArtist.rows[0];
     } else {
       const updatedArtist = await pool.query(
         `
-        UPDATE artists
-        SET
-          hometown_city = $1,
-          hometown_state = $2,
-          active_start_year = $3,
-          active_end_year = $4,
-          status = $5,
-          notes = $6
-        WHERE id = $7
-        RETURNING *
+UPDATE artists
+SET
+  hometown_city = $1,
+  hometown_state = $2,
+  active_start_year = $3,
+  active_end_year = $4,
+  status = $5,
+  notes = $6,
+  image_url = $7
+WHERE id = $8
+RETURNING *
         `,
-        [
-          hometown_city || "",
-          hometown_state || "",
-          active_start_year || "",
-          active_end_year || "",
-          status || "",
-          notes || "",
-          artistResult.rows[0].id
-        ]
+[
+  hometown_city || "",
+  hometown_state || "",
+  active_start_year || "",
+  active_end_year || "",
+  status || "",
+  notes || "",
+  image_url || "",
+  artistResult.rows[0].id
+]
       );
       artist = updatedArtist.rows[0];
     }
@@ -602,41 +607,45 @@ app.put("/artists/:id", async (req, res) => {
   try {
     const artistId = req.params.id;
 
-    const {
-      name,
-      hometown_city,
-      hometown_state,
-      active_start_year,
-      active_end_year,
-      status,
-      notes,
-      bands
-    } = req.body;
+const {
+  name,
+  artist_name,
+  image_url,
+  hometown_city,
+  hometown_state,
+  active_start_year,
+  active_end_year,
+  status,
+  notes,
+  bands
+} = req.body;
 
     const updateResult = await pool.query(
       `
-      UPDATE artists
-      SET
-        name = $1,
-        hometown_city = $2,
-        hometown_state = $3,
-        active_start_year = $4,
-        active_end_year = $5,
-        status = $6,
-        notes = $7
-      WHERE id = $8
-      RETURNING *
+UPDATE artists
+SET
+  name = $1,
+  hometown_city = $2,
+  hometown_state = $3,
+  active_start_year = $4,
+  active_end_year = $5,
+  status = $6,
+  notes = $7,
+  image_url = $8
+WHERE id = $9
+RETURNING *
       `,
-      [
-        name,
-        hometown_city || "",
-        hometown_state || "",
-        active_start_year || "",
-        active_end_year || "",
-        status || "",
-        notes || "",
-        artistId
-      ]
+[
+  artist_name || name,
+  hometown_city || "",
+  hometown_state || "",
+  active_start_year || "",
+  active_end_year || "",
+  status || "",
+  notes || "",
+  image_url || "",
+  artistId
+]
     );
 
     if (updateResult.rows.length === 0) {
