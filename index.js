@@ -45,7 +45,7 @@ CREATE TABLE IF NOT EXISTS artists (
       );
     `);
 
-    await pool.query(`
+await pool.query(`
 ALTER TABLE artists
 ADD COLUMN IF NOT EXISTS hometown_city TEXT,
 ADD COLUMN IF NOT EXISTS hometown_state TEXT,
@@ -54,6 +54,7 @@ ADD COLUMN IF NOT EXISTS active_end_year TEXT,
 ADD COLUMN IF NOT EXISTS status TEXT,
 ADD COLUMN IF NOT EXISTS notes TEXT,
 ADD COLUMN IF NOT EXISTS image_url TEXT DEFAULT '';
+`);
 
     await pool.query(`
       ALTER TABLE bands
