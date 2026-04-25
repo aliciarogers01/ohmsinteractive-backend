@@ -711,10 +711,13 @@ RETURNING *
       ...updateResult.rows[0],
       bands: bandsResult.rows
     });
-  } catch (err) {
-    console.error("Error updating artist:", err);
-    res.status(500).json({ error: "Error updating artist" });
-  }
+} catch (err) {
+  console.error("Error updating artist:", err);
+  res.status(500).json({
+    error: "Error updating artist",
+    details: err.message
+  });
+}
 });
 
 app.delete("/artists/:id", async (req, res) => {
