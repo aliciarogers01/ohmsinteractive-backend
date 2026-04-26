@@ -1,8 +1,22 @@
 const express = require("express");
 const app = express();
 const pool = require("./db");
+const cors = require("cors");
 
 app.use(express.json());
+
+app.use(
+  cors({
+    origin: [
+      "http://localhost:8081",
+      "http://localhost:8082",
+      "http://localhost:19006",
+      "https://media.ohiomusicscene.com"
+    ],
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type"]
+  })
+);
 
 app.get("/", (req, res) => {
   res.send("OHMS backend running");
